@@ -4,13 +4,10 @@ import torch
 from sklearn.utils.class_weight import compute_class_weight
 sys.path.append('..')
 
-from src.utils import load_config, set_seed, get_device, ensure_dirs, huggingface_login
+from src.utils import load_config, set_seed, get_device, ensure_dirs
 from src.dataset import load_dataloaders
 from src.model import build_model
 from scripts.train import train
-
-# Login via huggingface for datasets
-huggingface_login()
 
 config = load_config('configs/baseline_cnn.yaml')
 set_seed(config['data']['seed'])
@@ -24,15 +21,13 @@ train_ds, val_ds, test_ds, class_names = load_dataloaders(config)
 # --- NEW: Calculate Class Weights to handle Powdery Mildew imbalance ---
 print("Calculating class weights to balance dataset...")
 # Extract all labels from the training dataset
-# (Assuming train_ds returns a tuple of (image, label))
-all_train_labels = [label for _, label in train_ds]
-
-# Compute balanced weights using Scikit-Learn
+all_train_labels = train_ds.labels 
 class_weights_np = compute_class_weight(
     class_weight='balanced',
     classes=np.unique(all_train_labels),
-    y=all_train_labels
+    y=all_train_labels  
 )
+
 # Convert to PyTorch float tensor
 class_weights_tensor = torch.tensor(class_weights_np, dtype=torch.float)
 print(f"Computed weights for 6 classes: {class_weights_np}\n")
