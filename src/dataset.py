@@ -1,5 +1,6 @@
 import numpy as np
 import albumentations as A
+import os
 from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
@@ -57,6 +58,7 @@ class RubberLeafDataset(Dataset):
 def load_dataloaders(config: dict, hf_token: str = None):
     seed  = config['data']['seed']
     ds    = load_dataset(config['data']['dataset'],
+                         num_cores = os.cpu_count(),
                          token=hf_token or True)
     data  = ds['train']
     class_names = data.features['label'].names
