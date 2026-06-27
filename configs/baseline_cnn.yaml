@@ -14,7 +14,7 @@ data:
   num_workers: 0
 
 segmentation:
-  enabled: true
+  enabled: false
   model_path: "checkpoints/yolo_best.pt"
   fill: "black"   
   conf_threshold: 0.25 
@@ -37,7 +37,7 @@ training:
   learning_rate: 0.001
   scheduler:
     type: StepLR
-    step_size: 7
+    step_size: 9
     gamma: 0.5
 
 paths:
