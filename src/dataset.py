@@ -64,8 +64,7 @@ class LocalRubberDataset(Dataset):
 
 def load_dataloaders(config: dict):
     seed = config['data']['seed']
-    # Ensure this matches the key you put in your YAML (e.g., '/content/Unified_Dataset')
-    dataset_path = config['data']['dataset_path'] 
+    dataset_path = config['data']['dataset'] 
     
     # We use ImageFolder strictly as a fast way to map the directory structure
     print(f"Scanning local directory: {dataset_path}...")
