@@ -1,5 +1,5 @@
 model:
-  name: EnhancedCNN
+  name: MobileNetEdge
   num_classes: 6
 
 data:
