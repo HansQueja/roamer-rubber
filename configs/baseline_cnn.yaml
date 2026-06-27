@@ -13,6 +13,12 @@ data:
   batch_size: 256
   num_workers: 0
 
+segmentation:
+  enabled: true
+  model_path: "checkpoints/yolo_best.pt"
+  fill: "black"   
+  conf_threshold: 0.25 
+
 augmentation:
   random_resized_crop:
     scale: [0.6, 1.0]
