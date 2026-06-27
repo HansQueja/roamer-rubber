@@ -70,6 +70,65 @@ class EnhancedCNN(nn.Module):
         x = self.gap(x)
         x = torch.flatten(x, 1)
         return self.classifier(x)
+    
+
+class DeepEnhancedCNN(nn.Module):
+    def __init__(self, num_classes: int):
+        super().__init__()
+        
+        self.features = nn.Sequential(
+            # Block 1: 32 Filters
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            
+            # Block 2: 64 Filters
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            
+            # Block 3: 128 Filters (Double Conv for depth without shrinking)
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            
+            # Block 4: 256 Filters (Double Conv)
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            
+            # Block 5: 512 Filters
+            nn.Conv2d(256, 512, kernel_size=3, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2)
+        )
+        
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=0.4),
+            nn.Linear(512, 256),  # Expanded dense layer to handle 512 inputs
+            nn.ReLU(),
+            nn.Dropout(p=0.2),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.gap(x)
+        x = torch.flatten(x, 1)
+        return self.classifier(x)
 
 # --- 3. The Edge Robotics Champion (Pre-trained) ---
 class MobileNetEdge(nn.Module):

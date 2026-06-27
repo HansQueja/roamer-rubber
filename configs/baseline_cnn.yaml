@@ -1,5 +1,5 @@
 model:
-  name: EnhancedCNN
+  name: DeepEnhancedCNN
   num_classes: 6
 
 data:
