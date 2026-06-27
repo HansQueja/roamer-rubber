@@ -120,10 +120,14 @@ def _load_split_from_csv(config: dict):
                 f"No rows found for split='{split_name}' in split.csv.\n"
                 f"Expected values in the '{COL_SPLIT}' column: train, val, test."
             )
-        # os.path.join handles backslashes correctly on Windows
-        # but we normalise with os.normpath to be safe on all platforms
-        paths  = [
-            os.path.normpath(os.path.join(dataset_root, row[COL_FILENAME]))
+        paths = [
+            os.path.join(
+                dataset_root,
+                # Replace Windows backslashes with forward slashes
+                # before joining — critical when CSV was made on Windows
+                # but is being read on Linux (Colab)
+                row[COL_FILENAME].replace("\\", "/")
+            )
             for _, row in subset.iterrows()
         ]
         labels = [class_to_idx[row[COL_LABEL]] for _, row in subset.iterrows()]
