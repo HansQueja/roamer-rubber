@@ -3,21 +3,52 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
-def train(model, train_loader, val_loader, config, device, class_weights=None):
-    cfg      = config['training']
-    paths    = config['paths']
 
-    if class_weights is not None:
-        criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+def _build_scheduler(optimizer, cfg):
+    sched = cfg['scheduler']
+    stype = sched['type']
+
+    if stype == 'CosineAnnealingLR':
+        return optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max   = sched['T_max'],
+            eta_min = sched.get('eta_min', 1e-6)
+        )
+    elif stype == 'StepLR':
+        return optim.lr_scheduler.StepLR(
+            optimizer,
+            step_size = sched['step_size'],
+            gamma     = sched['gamma']
+        )
+    elif stype == 'ReduceLROnPlateau':
+        # Bonus option: adapts to val accuracy directly
+        # Requires scheduler.step(val_acc) instead of scheduler.step()
+        return optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode     = 'max',               # maximising val accuracy
+            patience = sched.get('plateau_patience', 3),
+            factor   = sched.get('factor', 0.5),
+            min_lr   = sched.get('eta_min', 1e-6)
+        )
     else:
-        criterion = nn.CrossEntropyLoss()
+        raise ValueError(
+            f"Unknown scheduler: '{stype}'. "
+            f"Supported: CosineAnnealingLR, StepLR, ReduceLROnPlateau"
+        )
+
+
+def train(model, train_loader, val_loader, config, device,
+          class_weights=None):
+    cfg   = config['training']
+    paths = config['paths']
+
+    criterion = (nn.CrossEntropyLoss(weight=class_weights.to(device))
+                 if class_weights is not None
+                 else nn.CrossEntropyLoss())
 
     optimizer = optim.Adam(model.parameters(), lr=cfg['learning_rate'])
-    scheduler = optim.lr_scheduler.StepLR(
-        optimizer,
-        step_size=cfg['scheduler']['step_size'],
-        gamma=cfg['scheduler']['gamma']
-    )
+    scheduler = _build_scheduler(optimizer, cfg)
+    is_plateau = cfg['scheduler']['type'] == 'ReduceLROnPlateau'
 
     best_val_acc      = 0.0
     epochs_no_improve = 0
@@ -25,6 +56,7 @@ def train(model, train_loader, val_loader, config, device, class_weights=None):
     val_acc_hist      = []
 
     print(f"Training {config['model']['name']} on {device}...")
+    print(f"Scheduler  : {cfg['scheduler']['type']}")
     print(f"Early stopping patience: {cfg['patience']} epochs\n")
 
     for epoch in range(1, cfg['epochs'] + 1):
@@ -55,7 +87,12 @@ def train(model, train_loader, val_loader, config, device, class_weights=None):
         current_lr = optimizer.param_groups[0]['lr']
         train_loss_hist.append(epoch_loss)
         val_acc_hist.append(val_acc)
-        scheduler.step()
+
+        # ReduceLROnPlateau needs the metric; others just step
+        if is_plateau:
+            scheduler.step(val_acc)
+        else:
+            scheduler.step()
 
         # ── Checkpoint & early stopping ────────────────────────
         marker = ""
@@ -103,3 +140,36 @@ def _plot_curves(loss_hist, acc_hist, best_acc, output_dir):
     plt.savefig(f"{output_dir}/training_curves.png",
                 dpi=120, bbox_inches='tight')
     plt.show()
+
+
+def _build_scheduler(optimizer, cfg):
+    sched = cfg['scheduler']
+    stype = sched['type']
+
+    if stype == 'CosineAnnealingLR':
+        return optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max   = sched['T_max'],
+            eta_min = sched.get('eta_min', 1e-6)
+        )
+    elif stype == 'StepLR':
+        return optim.lr_scheduler.StepLR(
+            optimizer,
+            step_size = sched['step_size'],
+            gamma     = sched['gamma']
+        )
+    elif stype == 'ReduceLROnPlateau':
+        # Bonus option: adapts to val accuracy directly
+        # Requires scheduler.step(val_acc) instead of scheduler.step()
+        return optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode     = 'max',               # maximising val accuracy
+            patience = sched.get('plateau_patience', 3),
+            factor   = sched.get('factor', 0.5),
+            min_lr   = sched.get('eta_min', 1e-6)
+        )
+    else:
+        raise ValueError(
+            f"Unknown scheduler: '{stype}'. "
+            f"Supported: CosineAnnealingLR, StepLR, ReduceLROnPlateau"
+        )

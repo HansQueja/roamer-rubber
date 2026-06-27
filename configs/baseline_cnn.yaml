@@ -11,31 +11,35 @@ data:
     test:  0.15
   image_size: 224
   batch_size: 128
-  num_workers: 0
+  num_workers: 5
 
 segmentation:
   enabled: true
   model_path: "checkpoints/yolo_best.pt"
   fill: "white"   
-  conf_threshold: 0.25 
+  conf_threshold: 0.10
   presegment_output: "Unified_Dataset_Segmented" 
 
 augmentation:
   random_resized_crop:
     scale: [0.6, 1.0]
-  horizontal_flip: 0.5
-  vertical_flip: 0.3
-  rotate_limit: 30
-  brightness_contrast: 0.3
+  horizontal_flip: 0.2
+  vertical_flip: 0.2
+  rotate_limit: 20
+  brightness_contrast: 0.2
+  hue_saturation:
+    hue_shift_limit: 0
+    sat_shift_limit: 0
+    val_shift_limit: 0
 
 training:
   epochs: 50
   patience: 10
   learning_rate: 0.001
   scheduler:
-    type: StepLR
-    step_size: 10
-    gamma: 0.5
+    type: CosineAnnealingLR
+    T_max: 50       
+    eta_min: 0.00001 
 
 paths:
   checkpoint: checkpoints/best_baseline_cnn.pth
