@@ -14,7 +14,7 @@ data:
   num_workers: 5
 
 segmentation:
-  enabled: false
+  enabled: true
   model_path: "checkpoints/yolo_best.pt"
   fill: "white"   
   conf_threshold: 0.10
