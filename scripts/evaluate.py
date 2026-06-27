@@ -14,7 +14,7 @@ if __name__ == '__main__':
     ensure_dirs(config['paths']['outputs'])
 
     _, val_loader, test_loader, \
-    _, _, test_ds, class_names = load_dataloaders(config, device)
+    _, _, test_ds, class_names = load_dataloaders(config)
 
     model = build_model(config).to(device)
 
