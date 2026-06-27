@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 from ultralytics import YOLO
-from PIL import Image
+import os
 
 
 def load_yolo_segmenter(model_path: str):
@@ -9,50 +9,80 @@ def load_yolo_segmenter(model_path: str):
     return YOLO(model_path)
 
 
-def segment_leaf_yolo(yolo_model, image_np: np.ndarray,
-                      fill: str = "white",
-                      conf_threshold: float = 0.25) -> np.ndarray:
-    """
-    Run YOLOv8 segmentation on a single RGB numpy image.
-    Returns the image with background removed, filled with
-    either white or black.
-
-    Args:
-        yolo_model:      loaded YOLO model instance
-        image_np:        H x W x 3 uint8 numpy array (RGB)
-        fill:            'white' or 'black' background fill
-        conf_threshold:  minimum confidence to accept a detection
-
-    Returns:
-        H x W x 3 uint8 numpy array with background replaced
-    """
+def segment_leaf_yolo(yolo_model, image_np, fill="white",
+                      conf_threshold=0.25):
     fill_value = (255, 255, 255) if fill == "white" else (0, 0, 0)
+    h, w       = image_np.shape[:2]
 
-    # YOLO expects BGR for cv2-style input, but ultralytics handles
-    # numpy RGB arrays directly
     results = yolo_model(image_np, conf=conf_threshold, verbose=False)
-
     result  = results[0]
 
-    # No detection — return fill-color image rather than crashing
     if result.masks is None or len(result.masks) == 0:
-        fallback = np.full_like(image_np, fill_value)
-        return fallback
+        # Return original image unchanged rather than a white blank
+        # A failed segmentation is less harmful than a meaningless input
+        return image_np
 
-    # If multiple detections, take the one with the highest confidence
-    # (most likely the primary leaf in frame)
     best_idx  = int(result.boxes.conf.argmax())
     mask_data = result.masks.data[best_idx].cpu().numpy()
+    mask      = cv2.resize(mask_data, (w, h),
+                           interpolation=cv2.INTER_NEAREST)
+    mask      = (mask > 0.5).astype(np.uint8)
 
-    # Resize mask to match original image dimensions (YOLO resizes internally)
-    h, w = image_np.shape[:2]
-    mask = cv2.resize(mask_data, (w, h),
-                      interpolation=cv2.INTER_NEAREST)
-    mask = (mask > 0.5).astype(np.uint8)  # binary: 1=leaf, 0=background
-
-    # Apply mask: keep leaf pixels, fill background
-    output = image_np.copy()
-    bg_mask = mask == 0
-    output[bg_mask] = fill_value
-
+    output           = image_np.copy()
+    output[mask == 0] = fill_value
     return output
+
+
+def presegment_dataset(yolo_model, image_paths, output_dir,
+                       fill="white", conf_threshold=0.25):
+    """
+    Run YOLO segmentation over all images once and save results to disk.
+    Training then loads from output_dir instead of running YOLO live.
+
+    Args:
+        yolo_model:     loaded YOLO instance
+        image_paths:    list of source image paths (from split.csv)
+        output_dir:     where to save segmented images
+        fill:           'white' or 'black'
+        conf_threshold: YOLO confidence threshold
+
+    Returns:
+        List of output paths in the same order as image_paths
+    """
+    from tqdm import tqdm
+
+    os.makedirs(output_dir, exist_ok=True)
+    output_paths  = []
+    no_detect     = 0
+
+    for src_path in tqdm(image_paths, desc="Pre-segmenting dataset"):
+        # Preserve subfolder structure: Leaf_Spot/img.jpg → output_dir/Leaf_Spot/img.jpg
+        rel_path   = os.path.relpath(src_path,
+                                     start=os.path.commonpath(image_paths))
+        dst_path   = os.path.join(output_dir, rel_path)
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+
+        if os.path.exists(dst_path):
+            # Skip if already segmented (allows resuming interrupted runs)
+            output_paths.append(dst_path)
+            continue
+
+        image = cv2.imread(src_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        segmented = segment_leaf_yolo(yolo_model, image,
+                                      fill=fill,
+                                      conf_threshold=conf_threshold)
+
+        if np.array_equal(segmented, image):
+            no_detect += 1   # original returned — YOLO found nothing
+
+        # Save as RGB (cv2 expects BGR)
+        cv2.imwrite(dst_path,
+                    cv2.cvtColor(segmented, cv2.COLOR_RGB2BGR))
+        output_paths.append(dst_path)
+
+    print(f"Pre-segmentation complete. "
+          f"No-detection fallbacks: {no_detect}/{len(image_paths)} "
+          f"({100*no_detect/len(image_paths):.1f}%)")
+    return output_paths

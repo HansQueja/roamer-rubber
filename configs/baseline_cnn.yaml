@@ -18,6 +18,7 @@ segmentation:
   model_path: "checkpoints/yolo_best.pt"
   fill: "black"   
   conf_threshold: 0.25 
+  presegment_output: "Unified_Dataset_Segmented" 
 
 augmentation:
   random_resized_crop:
