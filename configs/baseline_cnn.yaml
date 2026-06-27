@@ -1,0 +1,39 @@
+model:
+  name: BaselineCNN
+  num_classes: 4
+
+data:
+  dataset: Azcreas/BDRubberLeaf
+  seed: 42
+  split:
+    train: 0.70
+    val:   0.15
+    test:  0.15
+  image_size: 224
+  batch_size: 32
+  num_workers: 0
+
+augmentation:
+  random_resized_crop:
+    scale: [0.6, 1.0]
+  horizontal_flip: 0.5
+  vertical_flip: 0.3
+  rotate_limit: 30
+  brightness_contrast: 0.3
+  hue_saturation:
+    hue_shift_limit: 10
+    sat_shift_limit: 20
+    val_shift_limit: 10
+
+training:
+  epochs: 50
+  patience: 10
+  learning_rate: 0.001
+  scheduler:
+    type: StepLR
+    step_size: 10
+    gamma: 0.5
+
+paths:
+  checkpoint: checkpoints/best_baseline_cnn.pth
+  outputs: outputs/
