@@ -10,7 +10,7 @@ data:
     val:   0.15
     test:  0.15
   image_size: 224
-  batch_size: 256
+  batch_size: 128
   num_workers: 0
 
 segmentation:
@@ -37,7 +37,7 @@ training:
   learning_rate: 0.001
   scheduler:
     type: StepLR
-    step_size: 9
+    step_size: 10
     gamma: 0.5
 
 paths:
