@@ -9,6 +9,9 @@ from src.dataset import load_dataloaders
 from src.model import build_model
 from scripts.train import train
 
+# For training optimization
+torch.backends.cudnn.benchmark = True
+
 config = load_config('configs/baseline_cnn.yaml')
 set_seed(config['data']['seed'])
 device = get_device()
