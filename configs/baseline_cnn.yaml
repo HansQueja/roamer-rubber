@@ -16,7 +16,7 @@ data:
 segmentation:
   enabled: true
   model_path: "checkpoints/yolo_best.pt"
-  fill: "black"   
+  fill: "white"   
   conf_threshold: 0.25 
   presegment_output: "Unified_Dataset_Segmented" 
 

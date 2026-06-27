@@ -86,3 +86,52 @@ def presegment_dataset(yolo_model, image_paths, output_dir,
           f"No-detection fallbacks: {no_detect}/{len(image_paths)} "
           f"({100*no_detect/len(image_paths):.1f}%)")
     return output_paths
+
+
+def visualise_segmentation(yolo_model, image_path, conf_threshold=0.25):
+    """
+    Run segmentation on a single image file and display the result.
+    Shows three panels: Original | YOLO annotated | Classifier input (cleaned).
+    """
+    import matplotlib.pyplot as plt
+
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Image not found: {image_path}")
+
+    print(f"Running inference on: {image_path}")
+    results = yolo_model(image_path, conf=conf_threshold, verbose=False)
+    result  = results[0]
+
+    img = cv2.imread(image_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    if result.masks is not None:
+        print(f"Detected {len(result.masks)} instance(s).")
+
+        annotated = result.plot(line_width=2, masks=True, boxes=True)
+        annotated = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
+
+        best_idx  = int(result.boxes.conf.argmax())
+        mask_data = result.masks.data[best_idx].cpu().numpy()
+        h, w      = img.shape[:2]
+        mask      = cv2.resize(mask_data, (w, h),
+                               interpolation=cv2.INTER_NEAREST)
+        mask      = (mask > 0.5).astype(np.uint8)
+        cleaned   = img.copy()
+        cleaned[mask == 0] = (255, 255, 255)
+
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        axes[0].imshow(img);       axes[0].set_title("Original");            axes[0].axis('off')
+        axes[1].imshow(annotated); axes[1].set_title("YOLO Output");         axes[1].axis('off')
+        axes[2].imshow(cleaned);   axes[2].set_title("Classifier Input");    axes[2].axis('off')
+        plt.suptitle(os.path.basename(image_path), fontsize=11)
+        plt.tight_layout()
+        plt.show()
+
+    else:
+        print("No instances detected above confidence threshold.")
+        plt.figure(figsize=(5, 5))
+        plt.imshow(img)
+        plt.title("No detection")
+        plt.axis('off')
+        plt.show()
