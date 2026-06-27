@@ -4,9 +4,6 @@ data/images/
 *.png
 *.jpeg
 
-# Model weights
-checkpoints/*.pth
-*.pth
 
 # Python
 __pycache__/

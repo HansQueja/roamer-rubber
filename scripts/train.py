@@ -3,11 +3,15 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
-def train(model, train_loader, val_loader, config, device):
+def train(model, train_loader, val_loader, config, device, class_weights=None):
     cfg      = config['training']
     paths    = config['paths']
 
-    criterion = nn.CrossEntropyLoss()
+    if class_weights is not None:
+        criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+    else:
+        criterion = nn.CrossEntropyLoss()
+
     optimizer = optim.Adam(model.parameters(), lr=cfg['learning_rate'])
     scheduler = optim.lr_scheduler.StepLR(
         optimizer,

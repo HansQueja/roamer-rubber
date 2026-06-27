@@ -1,6 +1,6 @@
 model:
   name: BaselineCNN
-  num_classes: 4
+  num_classes: 6
 
 data:
   dataset: Azcreas/BDRubberLeaf
