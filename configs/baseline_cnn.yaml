@@ -26,11 +26,11 @@ augmentation:
   horizontal_flip: 0.2
   vertical_flip: 0.2
   rotate_limit: 20
-  brightness_contrast: 0.2
+  brightness_contrast: 0
   hue_saturation:
-    hue_shift_limit: 5
-    sat_shift_limit: 5
-    val_shift_limit: 5
+    hue_shift_limit: 0
+    sat_shift_limit: 0
+    val_shift_limit: 0
 
 training:
   epochs: 50
