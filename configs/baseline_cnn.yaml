@@ -3,7 +3,7 @@ model:
   num_classes: 6
 
 data:
-  dataset: Azcreas/BDRubberLeaf
+  dataset: Azcreas/Rubber-Tree-Dataset
   seed: 42
   split:
     train: 0.70
