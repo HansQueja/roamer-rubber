@@ -10,23 +10,22 @@ data:
     val:   0.15
     test:  0.15
   image_size: 224
-  batch_size: 128
+  batch_size: 64
   num_workers: 2
 
 segmentation:
-  enabled: true
+  enabled: false
   model_path: "checkpoints/yolo_best.pt"
-  fill: "black"   
+  fill: "white"   
   conf_threshold: 0.10
-  presegment_output: "Unified_Dataset_Segmented" 
 
 augmentation:
   random_resized_crop:
     scale: [0.6, 1.0]
-  horizontal_flip: 0.2
+  horizontal_flip: 0.3
   vertical_flip: 0.2
   rotate_limit: 20
-  brightness_contrast: 0
+  brightness_contrast: 0.2
   hue_saturation:
     hue_shift_limit: 0
     sat_shift_limit: 0
@@ -42,5 +41,5 @@ training:
     eta_min: 0.00001 
 
 paths:
-  checkpoint: checkpoints/best_baseline_cnn.pth
+  checkpoint: checkpoints/best_deepenhanced_cnn.pth
   outputs: outputs/
