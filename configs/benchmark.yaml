@@ -57,13 +57,13 @@ models:
     use_yolo: false
     quantize_yolo: false
 
-    name: "MobileNetEdge + YOLO FP32"
+  - name: "MobileNetEdge + YOLO FP32"
     checkpoint: "checkpoints/best_mobilenet_yolo.pth"
     architecture: MobileNetEdge
     use_yolo: true
     quantize_yolo: false
 
-    name: "MobileNetEdge + YOLO FP16"
+  - name: "MobileNetEdge + YOLO FP16"
     checkpoint: "checkpoints/best_mobilenet_yolo.pth"
     architecture: MobileNetEdge
     use_yolo: true
