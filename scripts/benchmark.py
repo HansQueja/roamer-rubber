@@ -323,7 +323,7 @@ if __name__ == '__main__':
         print("Exporting YOLO INT8...")
         yolo_fp32.export(format='torchscript', optimize=True)
         
-    yolo_int8 = YOLO(yolo_int8_path) if os.path.exists(yolo_int8_path) else yolo_fp32
+    yolo_int8 = YOLO(yolo_int8_path, task='segment') if os.path.exists(yolo_int8_path) else yolo_fp32
 
     def get_yolo(quantize):
         return yolo_int8 if quantize else yolo_fp32
@@ -369,7 +369,7 @@ if __name__ == '__main__':
             'model': {'name': arch, 'num_classes': len(class_names)}
         }
         model = build_model(model_cfg_dict)
-        model.load_state_dict(torch.load(ckpt, map_location=device))
+        model.load_state_dict(torch.load(ckpt, map_location='cpu'))
         model.to(device)
         model.eval()
 
