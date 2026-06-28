@@ -1,5 +1,5 @@
 model:
-  name: BaselineCNN
+  name: MobileNetEdge
   num_classes: 6
 
 data:
@@ -15,7 +15,7 @@ data:
 
 segmentation:
   enabled: false
-  model_path: "checkpoints/yolo_best.pt"
+  model_path: "checkpoints/best_deepenhanced_cnn.pt"
   fill: "black"   
   conf_threshold: 0.10
   presegment_output: "Unified_Dataset_Segmented" 
