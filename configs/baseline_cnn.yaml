@@ -3,7 +3,7 @@ model:
   num_classes: 6
 
 data:
-  dataset: "Unified_Dataset_Segmented"
+  dataset: "content/Unified_Dataset"
   seed: 42
   split:
     train: 0.70
@@ -14,15 +14,16 @@ data:
   num_workers: 2
 
 segmentation:
-  enabled: false
+  enabled: true
   model_path: "checkpoints/yolo_best.pt"
   fill: "white"   
   conf_threshold: 0.10
+  presegment_output: "Unified_Dataset_Segmented" 
 
 augmentation:
   random_resized_crop:
     scale: [0.6, 1.0]
-  horizontal_flip: 0.3
+  horizontal_flip: 0.2
   vertical_flip: 0.2
   rotate_limit: 20
   brightness_contrast: 0.2
