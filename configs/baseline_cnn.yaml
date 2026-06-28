@@ -1,5 +1,5 @@
 model:
-  name: DeepEnhancedCNN
+  name: BaselineCNN
   num_classes: 6
 
 data:
@@ -33,9 +33,9 @@ augmentation:
     val_shift_limit: 5
 
 training:
-  epochs: 50
-  patience: 10
-  learning_rate: 0.001
+  epochs: 100
+  patience: 15
+  learning_rate: 0.0003
   weight_decay: 0.0001
   scheduler:
     type: CosineAnnealingLR
@@ -43,5 +43,5 @@ training:
     eta_min: 0.00001 
 
 paths:
-  checkpoint: checkpoints/best_deepenhanced_cnn.pth
+  checkpoint: checkpoints/best_baseline_cnn_yolo.pth
   outputs: outputs/
