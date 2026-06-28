@@ -1,11 +1,11 @@
-test_images_dir: "test_images/"
+test_images_dir: "/content/roamer-rubber/Unified_Dataset"
 
 data:
-  dataset: "Unified_Dataset_Segmented"
+  dataset: "/content/roamer-rubber/Unified_Dataset"  # <-- Point to the RAW unsegmented images
   seed: 42
   image_size: 224
   batch_size: 32
-  num_workers: 0
+  num_workers: 2
 
 class_names:
   - Algal_Spot
@@ -16,71 +16,49 @@ class_names:
   - Powdery_Mildew
 
 yolo:
-  model_path: "checkpoints/yolo_best.pt"
+  fp32_path: "checkpoints/yolo_best.pt"
+  int8_path: "checkpoints/yolo_best.torchscript"      # <-- Point to the pre-quantized static file
   conf_threshold: 0.10
-  fill: "white"
 
-# Each entry = one row in the results table
 models:
-  # 1. BaselineCNN — no segmentation
-  - name: "BaselineCNN (no YOLO)"
+  - name: "BaselineCNN (Raw Images)"
     checkpoint: "checkpoints/best_baseline_cnn.pth"
     architecture: BaselineCNN
     use_yolo: false
     quantize_yolo: false
 
-  # 2. BaselineCNN — with YOLO FP32
   - name: "BaselineCNN + YOLO FP32"
-    checkpoint: "checkpoints/best_baseline_cnn_yolo.pth"
+    checkpoint: "checkpoints/best_baseline_cnn.pth"
     architecture: BaselineCNN
     use_yolo: true
     quantize_yolo: false
 
-  # 3. BaselineCNN — with YOLO INT8
   - name: "BaselineCNN + YOLO INT8"
-    checkpoint: "checkpoints/best_baseline_cnn_yolo.pth"
+    checkpoint: "checkpoints/best_baseline_cnn.pth"
     architecture: BaselineCNN
     use_yolo: true
     quantize_yolo: true
 
-  # 4. DeepEnhanced — with YOLO FP32
-  - name: "DeepEnhancedCNN + YOLO FP32"
+  - name: "DeepEnhancedCNN_SE + YOLO FP32"             # <-- Updated to your optimized attention model
     checkpoint: "checkpoints/best_deepenhanced_cnn.pth"
-    architecture: DeepEnhancedCNN
+    architecture: DeepEnhancedCNN_SE
     use_yolo: true
     quantize_yolo: false
 
-  # 5. DeepEnhanced — with YOLO INT8
-  - name: "DeepEnhancedCNN + YOLO INT8"
+  - name: "DeepEnhancedCNN_SE + YOLO INT8"             # <-- Your core custom edge architecture
     checkpoint: "checkpoints/best_deepenhanced_cnn.pth"
-    architecture: DeepEnhancedCNN
+    architecture: DeepEnhancedCNN_SE
     use_yolo: true
     quantize_yolo: true
 
-  # 6. MobileNet — with YOLO FP32
-  - name: "MobileNetEdge + YOLO FP32"
-    checkpoint: "checkpoints/best_mobilenet.pth"
+  - name: "MobileNetEdge (Raw Images)"
+    checkpoint: "checkpoints/best_mobilenet_cascade.pth"
     architecture: MobileNetEdge
-    use_yolo: true
+    use_yolo: false
     quantize_yolo: false
 
-  # 7. MobileNet — with YOLO INT8
-  - name: "MobileNetEdge + YOLO INT8"
-    checkpoint: "checkpoints/best_mobilenet.pth"
-    architecture: MobileNetEdge
-    use_yolo: true
-    quantize_yolo: true
-
-  # 8. YOLO standalone — FP32 (seg-head classifier)
   - name: "YOLOv8s Standalone FP32"
     checkpoint: "checkpoints/yolo_best.pt"
     architecture: YOLOStandalone
-    use_yolo: false       # YOLO IS the model here, not a preprocessor
-    quantize_yolo: false
-
-  # 9. YOLO standalone — INT8
-  - name: "YOLOv8s Standalone INT8"
-    checkpoint: "checkpoints/yolo_best.pt"
-    architecture: YOLOStandalone
     use_yolo: false
-    quantize_yolo: true   # quantize the YOLO model itself
+    quantize_yolo: false
