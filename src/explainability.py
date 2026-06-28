@@ -18,6 +18,17 @@ _preprocess = A.Compose([
     ToTensorV2()
 ])
 
+def _load_raw_image(test_ds, idx: int) -> np.ndarray:
+    """
+    Load the original unnormalised RGB image from disk.
+    Works with LocalRubberDataset which stores file paths.
+    """
+    img_path = test_ds.image_paths[idx]
+    image    = cv2.imread(img_path)
+    if image is None:
+        raise FileNotFoundError(f"Cannot read image: {img_path}")
+    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
 
 def get_gradcam_overlay(model, target_layers, raw_image_np,
                         target_class, device):
@@ -40,9 +51,6 @@ def get_gradcam_overlay(model, target_layers, raw_image_np,
 
 def collect_fp_fn_records(model, test_ds, all_preds, all_labels,
                            class_names, device):
-    """
-    Builds a list of misclassification records with confidence scores.
-    """
     records = []
     model.eval()
 
@@ -54,7 +62,7 @@ def collect_fp_fn_records(model, test_ds, all_preds, all_labels,
             if true_c == pred_c:
                 continue
 
-            raw_img = np.array(test_ds[idx]['image'].convert('RGB'))
+            raw_img = _load_raw_image(test_ds, idx)   # ← fixed
             tensor  = _preprocess(image=raw_img)['image'] \
                                  .unsqueeze(0).to(device)
             probs   = torch.softmax(model(tensor), dim=1) \
@@ -87,9 +95,6 @@ def print_fp_fn_summary(records, class_names):
 def plot_correct_predictions(model, target_layers, test_ds,
                               all_preds, all_labels, class_names,
                               device, output_dir):
-    """
-    One correctly classified example per class, with Grad-CAM overlay.
-    """
     n   = len(class_names)
     fig, axes = plt.subplots(2, n, figsize=(5 * n, 8))
     fig.suptitle(
@@ -110,7 +115,7 @@ def plot_correct_predictions(model, target_layers, test_ds,
             axes[1, c].axis('off')
             continue
 
-        raw_img = np.array(test_ds[match]['image'].convert('RGB'))
+        raw_img = _load_raw_image(test_ds, match)   # ← fixed
         overlay = get_gradcam_overlay(model, target_layers,
                                       raw_img, c, device)
 

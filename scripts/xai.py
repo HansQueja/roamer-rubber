@@ -24,9 +24,23 @@ if __name__ == '__main__':
         model, test_loader, class_names, device, config
     )
 
+    # Sanity check — prints every layer in features with its index
+    for i, layer in enumerate(model.features):
+        print(i, layer)
+
     # Get the target layer for Grad-CAM
-    # Update this if you change the architecture
-    target_layers = [model.conv3]
+    if config['model']['name'] == 'BaselineCNN':
+        target_layers = [model.conv3]
+    elif config['model']['name'] == 'EnhancedCNN':
+        target_layers = [model.features[-3]]  # last Conv2d before BN+ReLU
+    elif config['model']['name'] == 'DeepEnhancedCNN':
+        target_layers = [model.features[-3]]  # Conv2d(128, 256) — index 8
+    elif config['model']['name'] == 'LeafNet':
+        target_layers = [model.stage3[-2]]    # ResidualBlock's last conv
+    elif config['model']['name'] == 'MobileNetEdge':
+        target_layers = [model.model.features[-1]]
+    else:
+        raise ValueError(f"No target layer defined for {config['model']['name']}")
 
     run_xai(model, target_layers, test_ds,
             all_preds, all_labels, class_names,
