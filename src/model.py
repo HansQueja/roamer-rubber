@@ -148,7 +148,7 @@ def build_model(config: dict) -> nn.Module:
     elif name == 'EnhancedCNN':
         return EnhancedCNN(num_classes)
     elif name == 'DeepEnhancedCNN':
-        return EnhancedCNN(num_classes)
+        return DeepEnhancedCNN(num_classes)
     elif name == 'MobileNetEdge':
         return MobileNetEdge(num_classes)
     else:
