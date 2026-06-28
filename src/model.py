@@ -70,9 +70,27 @@ class EnhancedCNN(nn.Module):
         x = self.gap(x)
         x = torch.flatten(x, 1)
         return self.classifier(x)
-    
 
-class DeepEnhancedCNN(nn.Module):
+
+class SEBlock(nn.Module):
+    """Squeeze-and-Excitation block for channel-wise attention."""
+    def __init__(self, channels, reduction=16):
+        super().__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channels, channels // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channels // reduction, channels, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
+class DeepEnhancedCNN_SE(nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
 
@@ -82,36 +100,40 @@ class DeepEnhancedCNN(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
+            SEBlock(32),
 
             # Block 2: 112 → 56
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
+            SEBlock(64),
 
-            # Block 3: 56 → 28 — double conv adds depth without losing resolution
+            # Block 3: 56 → 28
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),  # second conv, no pool
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
+            SEBlock(128),
 
             # Block 4: 28 → 14
             nn.Conv2d(128, 256, kernel_size=3, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
+            SEBlock(256),
         )
 
-        self.gap = nn.AdaptiveAvgPool2d(1)   # 256-dim after flatten
+        self.gap = nn.AdaptiveAvgPool2d(1)
 
         self.classifier = nn.Sequential(
-            nn.Dropout(p=0.5),               # increased from 0.4
+            nn.Dropout(p=0.5),
             nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Dropout(p=0.3),               # increased from 0.2
+            nn.Dropout(p=0.3),
             nn.Linear(128, num_classes)
         )
 
@@ -148,7 +170,7 @@ def build_model(config: dict) -> nn.Module:
     elif name == 'EnhancedCNN':
         return EnhancedCNN(num_classes)
     elif name == 'DeepEnhancedCNN':
-        return DeepEnhancedCNN(num_classes)
+        return DeepEnhancedCNN_SE(num_classes)
     elif name == 'MobileNetEdge':
         return MobileNetEdge(num_classes)
     else:

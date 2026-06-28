@@ -3,7 +3,7 @@ model:
   num_classes: 6
 
 data:
-  dataset: "content/Unified_Dataset_Segmented"
+  dataset: "/content/roamer-rubber/Unified_Dataset_Segmented"
   seed: 42
   split:
     train: 0.70
@@ -28,14 +28,15 @@ augmentation:
   rotate_limit: 20
   brightness_contrast: 0.2
   hue_saturation:
-    hue_shift_limit: 0
-    sat_shift_limit: 0
-    val_shift_limit: 0
+    hue_shift_limit: 5
+    sat_shift_limit: 5
+    val_shift_limit: 5
 
 training:
   epochs: 50
   patience: 10
   learning_rate: 0.001
+  weight_decay: 0.0001
   scheduler:
     type: CosineAnnealingLR
     T_max: 50       
