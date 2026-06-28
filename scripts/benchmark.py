@@ -181,16 +181,16 @@ if __name__ == '__main__':
     test_labels = test_ds.labels
     print(f" Verified {len(test_images)} raw images extracted from evaluation split.")
 
-    # ── Load Static YOLO Weights (Ensures pure thread context) ──────────────
     print("Statically initializing validation targets...")
     yolo_fp32 = YOLO(yolo_cfg['fp32_path'])
     
-    if os.path.exists(yolo_cfg['int8_path']):
-        yolo_int8 = YOLO(yolo_cfg['int8_path'], task='segment')
-        print("✓ Loaded static pre-compiled INT8 Torchscript model.")
+    # Load the ONNX model
+    if os.path.exists(yolo_cfg['onnx_path']):
+        yolo_edge = YOLO(yolo_cfg['onnx_path'], task='segment')
+        print("✓ Loaded static pre-compiled ONNX FP16 model.")
     else:
-        print("⚠️ Warning: Quantized Torchscript file not found. Falling back to FP32.")
-        yolo_int8 = yolo_fp32
+        print("⚠️ Warning: ONNX file not found. Falling back to FP32.")
+        yolo_edge = yolo_fp32
 
     all_results = []
 
@@ -205,7 +205,9 @@ if __name__ == '__main__':
             continue
 
         print(f"\nEvaluating: {name}...")
-        current_yolo = yolo_int8 if q_yolo else yolo_fp32
+        
+        # Use the ONNX model if q_yolo is true
+        current_yolo = yolo_edge if q_yolo else yolo_fp32
 
         # --- Case A: YOLO Standalone Head ---
         if arch == 'YOLOStandalone':
