@@ -1,4 +1,3 @@
-# scripts/benchmark.py
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -13,7 +12,7 @@ from collections import defaultdict
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import (accuracy_score, confusion_matrix,
-                              precision_recall_fscore_support)
+                             precision_recall_fscore_support)
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from ultralytics import YOLO
@@ -34,16 +33,6 @@ def load_cfg(path):
 
 # ── Image utilities ───────────────────────────────────────────────────────────
 
-def load_test_images(d):
-    exts  = {'.jpg', '.jpeg', '.png', '.bmp'}
-    paths = sorted(str(p) for p in Path(d).rglob('*')
-                   if p.suffix.lower() in exts)
-    if not paths:
-        raise FileNotFoundError(f"No images in '{d}'")
-    print(f"Timing images: {len(paths)} files in '{d}'")
-    return paths
-
-
 _eval_tf = A.Compose([
     A.Resize(224, 224),
     A.Normalize(mean=(0.485, 0.456, 0.406),
@@ -60,7 +49,7 @@ def preprocess(path):
 
 def segment_with_yolo(yolo_model, image_rgb, conf=0.10):
     """
-    Segment leaf, return white-background isolated image.
+    Segment leaf, return black-background isolated image.
     Falls back to original image if no detection.
     """
     h, w   = image_rgb.shape[:2]
@@ -75,7 +64,7 @@ def segment_with_yolo(yolo_model, image_rgb, conf=0.10):
         interpolation=cv2.INTER_NEAREST)
     mask     = (mask > 0.5).astype(np.uint8)
     out      = image_rgb.copy()
-    out[mask == 0] = 255
+    out[mask == 0] = 0 # Changed to 0 (Black Fill) to reflect your 95%+ pipeline discovery
     return out
 
 
@@ -95,28 +84,12 @@ def yolo_standalone_predict(yolo_model, path, class_names, conf=0.10):
     result = yolo_model(img, conf=conf, verbose=False)[0]
 
     if result.boxes is None or len(result.boxes) == 0:
-        # No detection → predict Healthy (index 3)
-        return 3, 1.0
+        return 3, 1.0 # No detection fallback -> predict Healthy
 
     best      = int(result.boxes.conf.argmax())
     cls_idx   = int(result.boxes.cls[best].item())
     cls_conf  = float(result.boxes.conf[best].item())
     return cls_idx, cls_conf
-
-
-def export_yolo_int8(yolo_path, output_path="checkpoints/yolo_best_int8.pt"):
-    """
-    Export YOLO to INT8 using Ultralytics built-in export.
-    Ultralytics handles YOLO quantization better than PyTorch dynamic quant
-    because it uses TensorRT or ONNX INT8 calibration internally.
-    """
-    print("  Exporting YOLO INT8 via Ultralytics...")
-    yolo = YOLO(yolo_path)
-    # Export to TorchScript with INT8 — works on CPU without TensorRT
-    yolo.export(format='torchscript', optimize=True)
-    exported = yolo_path.replace('.pt', '_int8.torchscript')
-    print(f"  INT8 exported → {exported}")
-    return exported
 
 
 # ── Evaluation ────────────────────────────────────────────────────────────────
@@ -185,10 +158,8 @@ def _compute_metrics(preds, labels, class_names):
 # ── Timing ────────────────────────────────────────────────────────────────────
 
 def time_pipeline(predict_fn, image_paths, device, warmup=3):
-    """
-    General-purpose timing wrapper.
-    predict_fn: callable that takes an image path and returns nothing useful.
-    """
+    """General-purpose timing wrapper."""
+    # Active warm-up to prevent initial VRAM loading latencies from inflating values
     for path in image_paths[:warmup]:
         predict_fn(path)
 
@@ -197,7 +168,9 @@ def time_pipeline(predict_fn, image_paths, device, warmup=3):
         if device.type == 'cuda':
             torch.cuda.synchronize()
         t0 = time.perf_counter()
+        
         predict_fn(path)
+        
         if device.type == 'cuda':
             torch.cuda.synchronize()
         timings.append((time.perf_counter() - t0) * 1000)
@@ -271,8 +244,7 @@ def save_outputs(results, class_names, output_dir):
         plt.close()
 
     # Summary CSV
-    with open(os.path.join(output_dir, 'summary.csv'), 'w',
-              newline='') as f:
+    with open(os.path.join(output_dir, 'summary.csv'), 'w', newline='') as f:
         fields = ['model', 'accuracy', 'macro_precision',
                   'macro_recall', 'macro_f1', 'weighted_f1',
                   'size_mb', 'mean_ms', 'fps']
@@ -292,8 +264,7 @@ def save_outputs(results, class_names, output_dir):
             })
 
     # Per-class CSV
-    with open(os.path.join(output_dir, 'per_class.csv'), 'w',
-              newline='') as f:
+    with open(os.path.join(output_dir, 'per_class.csv'), 'w', newline='') as f:
         w = csv.DictWriter(f, fieldnames=[
             'model', 'class', 'precision', 'recall', 'f1', 'support'])
         w.writeheader()
@@ -311,12 +282,12 @@ if __name__ == '__main__':
     class_names = cfg['class_names']
     yolo_cfg    = cfg['yolo']
     output_dir  = 'outputs/benchmark'
-    device      = torch.device('cpu')  # CPU for fair cross-model comparison
+    
+    # Check if GPU is available; otherwise automatically adapt to CPU
+    device      = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Benchmarking Execution Environment Target: {device}")
 
-    print(f"Device: {device}")
-    test_images = load_test_images(cfg['test_images_dir'])
-
-    # ── Load test dataset once ──────────────────────────────────────────────
+    # ── Load test dataset validation environment ──────────────────────────────
     minimal_cfg = {
         'data': {
             'dataset'    : cfg['data']['dataset'],
@@ -336,20 +307,23 @@ if __name__ == '__main__':
             }
         }
     }
-    _, _, test_loader, _, _, test_ds, _ = load_dataloaders(
-        minimal_cfg, device=device)
+    _, _, test_loader, _, _, test_ds, _ = load_dataloaders(minimal_cfg, device=device)
+
+    # FIX: Extract file paths straight from the official dataset split object
+    test_images = test_ds.image_paths
+    print(f"📦 Successfully parsed data split: Verified {len(test_images)} exact files from test split for latency evaluations.")
 
     # ── Load YOLO models ────────────────────────────────────────────────────
     print("\nLoading YOLO FP32...")
     yolo_fp32 = YOLO(yolo_cfg['model_path'])
 
-    # INT8 via Ultralytics export (more reliable than PyTorch dynamic quant)
-    print("Exporting YOLO INT8...")
-    yolo_fp32.export(format='torchscript', optimize=True)
+    # INT8 via Ultralytics export
     yolo_int8_path = yolo_cfg['model_path'].replace('.pt', '.torchscript')
-    # Reload as standard YOLO — Ultralytics handles the quantized weights
-    yolo_int8 = YOLO(yolo_int8_path) if os.path.exists(yolo_int8_path) \
-                else yolo_fp32   # fallback if export unsupported
+    if not os.path.exists(yolo_int8_path):
+        print("Exporting YOLO INT8...")
+        yolo_fp32.export(format='torchscript', optimize=True)
+        
+    yolo_int8 = YOLO(yolo_int8_path) if os.path.exists(yolo_int8_path) else yolo_fp32
 
     def get_yolo(quantize):
         return yolo_int8 if quantize else yolo_fp32
@@ -363,7 +337,7 @@ if __name__ == '__main__':
         use_yolo   = mcfg['use_yolo']
         q_yolo     = mcfg['quantize_yolo']
 
-        if not os.path.exists(ckpt):
+        if not os.path.exists(ckpt) and arch != 'YOLOStandalone':
             print(f"\n⚠️  Skipping '{name}' — checkpoint not found: {ckpt}")
             continue
 
@@ -372,19 +346,13 @@ if __name__ == '__main__':
         # ── YOLO Standalone ──────────────────────────────────────────────
         if arch == 'YOLOStandalone':
             yolo_model = get_yolo(q_yolo)
-            size_mb    = get_model_size_mb(yolo_fp32.model) \
-                         if not q_yolo else \
-                         get_model_size_mb(yolo_fp32.model) * 0.25  # estimate
+            size_mb    = get_model_size_mb(yolo_fp32.model) if not q_yolo else get_model_size_mb(yolo_fp32.model) * 0.25
 
             print("  Evaluating YOLO standalone classification...")
-            eval_res = evaluate_yolo_standalone(
-                yolo_model, test_ds, class_names,
-                yolo_cfg['conf_threshold'])
+            eval_res = evaluate_yolo_standalone(yolo_model, test_ds, class_names, yolo_cfg['conf_threshold'])
 
             def yolo_predict_fn(path):
-                yolo_standalone_predict(yolo_model, path,
-                                        class_names,
-                                        yolo_cfg['conf_threshold'])
+                yolo_standalone_predict(yolo_model, path, class_names, yolo_cfg['conf_threshold'])
 
             timing = time_pipeline(yolo_predict_fn, test_images, device)
 
@@ -401,7 +369,8 @@ if __name__ == '__main__':
             'model': {'name': arch, 'num_classes': len(class_names)}
         }
         model = build_model(model_cfg_dict)
-        model.load_state_dict(torch.load(ckpt, map_location='cpu'))
+        model.load_state_dict(torch.load(ckpt, map_location=device))
+        model.to(device)
         model.eval()
 
         size_mb = get_model_size_mb(model)
@@ -409,32 +378,21 @@ if __name__ == '__main__':
         yolo_model = get_yolo(q_yolo) if use_yolo else None
 
         # Evaluation
-        print("  Evaluating on test set...")
-        if use_yolo:
-            # For YOLO-pipeline evaluation, we use the pre-segmented dataset
-            # (same images the model was trained on) — this is already in
-            # test_loader since dataset points to Unified_Dataset_Segmented
-            eval_res = evaluate_classifier(model, test_loader,
-                                           class_names, device)
-        else:
-            eval_res = evaluate_classifier(model, test_loader,
-                                           class_names, device)
+        print("  Evaluating on test loader split...")
+        eval_res = evaluate_classifier(model, test_loader, class_names, device)
+        print(f"  Accuracy: {eval_res['accuracy']:.2%}  Macro-F1: {eval_res['macro_f1']:.2%}")
 
-        print(f"  Accuracy: {eval_res['accuracy']:.2%}  "
-              f"Macro-F1: {eval_res['macro_f1']:.2%}")
-
-        # Timing
+        # Latency Timing Configuration
         if use_yolo:
             def predict_fn(path):
-                t = preprocess_with_yolo(path, yolo_model,
-                                         yolo_cfg['conf_threshold'])
+                t = preprocess_with_yolo(path, yolo_model, yolo_cfg['conf_threshold'])
                 with torch.no_grad():
-                    model(t)
+                    model(t.to(device))
         else:
             def predict_fn(path):
                 t = preprocess(path)
                 with torch.no_grad():
-                    model(t)
+                    model(t.to(device))
 
         timing = time_pipeline(predict_fn, test_images, device)
         print(f"  {timing['mean_ms']:.2f} ms/img  ({timing['fps']} FPS)")
@@ -451,7 +409,7 @@ if __name__ == '__main__':
             'timing' : timing,
         })
 
-    # ── Final output ────────────────────────────────────────────────────────
+    # ── Final output summaries ──────────────────────────────────────────────
     print_table(all_results, class_names)
     save_outputs(all_results, class_names, output_dir)
-    print("\nBenchmark complete.")
+    print("\nBenchmark evaluations successfully logged.")
