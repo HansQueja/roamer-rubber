@@ -17,7 +17,7 @@ class_names:
 
 yolo:
   fp32_path: "checkpoints/yolo_best.pt"
-  int8_path: "checkpoints/yolo_best.torchscript"      # <-- Point to the pre-quantized static file
+  onnx_path: "checkpoints/yolo_best.onnx"
   conf_threshold: 0.10
 
 models:
@@ -33,7 +33,7 @@ models:
     use_yolo: true
     quantize_yolo: false
 
-  - name: "BaselineCNN + YOLO INT8"
+  - name: "BaselineCNN + YOLO FP16"
     checkpoint: "checkpoints/best_baseline_cnn.pth"
     architecture: BaselineCNN
     use_yolo: true
@@ -45,7 +45,7 @@ models:
     use_yolo: true
     quantize_yolo: false
 
-  - name: "DeepEnhancedCNN_SE + YOLO INT8"             # <-- Your core custom edge architecture
+  - name: "DeepEnhancedCNN_SE + YOLO FP16"             # <-- Your core custom edge architecture
     checkpoint: "checkpoints/best_deepenhanced_cnn.pth"
     architecture: DeepEnhancedCNN_SE
     use_yolo: true
