@@ -3,7 +3,7 @@ model:
   num_classes: 6
 
 data:
-  dataset: "content/Unified_Dataset"
+  dataset: "content/Unified_Dataset_Segmented"
   seed: 42
   split:
     train: 0.70
@@ -14,7 +14,7 @@ data:
   num_workers: 2
 
 segmentation:
-  enabled: true
+  enabled: false
   model_path: "checkpoints/yolo_best.pt"
   fill: "black"   
   conf_threshold: 0.10

@@ -70,5 +70,4 @@ print(f"Computed weights for {len(class_names)} classes: {class_weights_np}\n")
 
 # ── Train ─────────────────────────────────────────────────────────────────────
 model = build_model(config).to(device)
-train(model, train_loader, val_loader, config, device,
-      class_weights=class_weights_tensor)
+train(model, train_loader, val_loader, config, device)
