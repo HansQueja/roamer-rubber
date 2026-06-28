@@ -314,15 +314,16 @@ if __name__ == '__main__':
     print(f"📦 Successfully parsed data split: Verified {len(test_images)} exact files from test split for latency evaluations.")
 
     # ── Load YOLO models ────────────────────────────────────────────────────
-    print("\nLoading YOLO FP32...")
-    yolo_fp32 = YOLO(yolo_cfg['model_path'])
-
-    # INT8 via Ultralytics export
     yolo_int8_path = yolo_cfg['model_path'].replace('.pt', '.torchscript')
+    
     if not os.path.exists(yolo_int8_path):
         print("Exporting YOLO INT8...")
-        yolo_fp32.export(format='torchscript', optimize=True)
-        
+        # Use a temporary YOLO instance for export so we don't poison the CUDA context!
+        YOLO(yolo_cfg['model_path']).export(format='torchscript', optimize=True)
+
+    print("\nLoading YOLO FP32 into VRAM...")
+    # Now load a fresh, clean instance specifically for GPU inference
+    yolo_fp32 = YOLO(yolo_cfg['model_path']) 
     yolo_int8 = YOLO(yolo_int8_path, task='segment') if os.path.exists(yolo_int8_path) else yolo_fp32
 
     def get_yolo(quantize):
