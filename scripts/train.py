@@ -46,7 +46,13 @@ def train(model, train_loader, val_loader, config, device,
                  if class_weights is not None
                  else nn.CrossEntropyLoss())
 
-    optimizer = optim.Adam(model.parameters(), lr=cfg['learning_rate'])
+    weight_decay_value = config['training'].get('weight_decay', 0.0)
+
+    optimizer = optim.Adam(
+        model.parameters(), 
+        lr=cfg['learning_rate'], 
+        weight_decay=weight_decay_value
+    )
     scheduler = _build_scheduler(optimizer, cfg)
     is_plateau = cfg['scheduler']['type'] == 'ReduceLROnPlateau'
 
